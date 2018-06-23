@@ -23,14 +23,15 @@
 			
 			Decimal.set({ precision: 30 });
 			
+			//get target net from url param
 			var url = location.href;
             var paraString = url.substring(url.indexOf("?") + 1, url.length).split("&");
             var paraObj = {};
             for (i = 0; j = paraString[i]; i++) {
                 paraObj[j.substring(0, j.indexOf("=")).toLowerCase()] = j.substring(j.indexOf("=") + 1, j.length);
             }
-			targetNet = paraObj["target-net"];
-			if(!targetNet) targetNet = "ifood-aliyun";
+			paramTargetNet = paraObj["target-net"];
+			if(!paramTargetNet) paramTargetNet = "mainnet";
 			
 			var web3 = null;
 			var rpcAddr = null; 
@@ -39,12 +40,17 @@
 			var deployBlockNumber = 0;
 			$.get("conf.json", function(configData) {
 				console.log("configData", configData);
-				rpcAddr = configData["target-net-list"][targetNet]["rpc-addrs"][0]["rpc-http"];
+				var targetNet = configData["target-net-list"][paramTargetNet];
+				if(!targetNet){
+					alert("can not find " + paramTargetNet + " config!");
+					return;
+				}
+				rpcAddr = targetNet["rpc-addrs"][0]["rpc-http"];
 				web3 = new Web3(Web3.givenProvider || rpcAddr);
 				
-				contractAddress = configData["target-net-list"][targetNet]["contractAddress"];
-				deployBlockNumber = configData["target-net-list"][targetNet]["deployBlockNumber"];
-				var abiFile = configData["target-net-list"][targetNet]["ABI-file"];
+				contractAddress = targetNet["contractAddress"];
+				deployBlockNumber = targetNet["deployBlockNumber"];
+				var abiFile = targetNet["ABI-file"];
 				
 				$.getJSON(abiFile, function(abiData) {
 					myContract = new web3.eth.Contract(abiData, contractAddress);1
