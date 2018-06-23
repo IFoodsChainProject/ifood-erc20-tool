@@ -1,0 +1,191 @@
+﻿<html>
+	<head>
+	  <title>ifood-token-tool</title>
+      <meta charset="utf-8" />
+	  <script src ="jquery-3.1.1.min.js"></script>
+	  <script src ="web3.min.js"></script>
+	  <script src ="decimal.min.js"></script>
+	</head>
+	<body>
+		<div id="div1">
+			<button type="button" id="getIFOODValue" >get IFOOD Value</button>
+			<br/>
+			<button type="button" id="getEventHistory" >get history events</button>
+			<br/>
+			<button type="button" id="showAllHolders" >show all holders</button>
+			<br/>
+			<button type="button" id="transfer" >transfer</button>
+        </div>
+		<div id="div-all-holders">
+		</div>
+		
+		<script>
+			
+			Decimal.set({ precision: 30 });
+			
+			var url = location.href;
+            var paraString = url.substring(url.indexOf("?") + 1, url.length).split("&");
+            var paraObj = {};
+            for (i = 0; j = paraString[i]; i++) {
+                paraObj[j.substring(0, j.indexOf("=")).toLowerCase()] = j.substring(j.indexOf("=") + 1, j.length);
+            }
+			targetNet = paraObj["target-net"];
+			if(!targetNet) targetNet = "ifood-aliyun";
+			
+			var web3 = null;
+			var rpcAddr = null; 
+			var contractAddress = null;
+			var myContract = null;
+			var deployBlockNumber = 0;
+			$.get("conf.json", function(configData) {
+				console.log("configData", configData);
+				rpcAddr = configData["target-net-list"][targetNet]["rpc-addrs"][0]["rpc-http"];
+				web3 = new Web3(Web3.givenProvider || rpcAddr);
+				
+				contractAddress = configData["target-net-list"][targetNet]["contractAddress"];
+				deployBlockNumber = configData["target-net-list"][targetNet]["deployBlockNumber"];
+				var abiFile = configData["target-net-list"][targetNet]["ABI-file"];
+				
+				$.getJSON(abiFile, function(abiData) {
+					myContract = new web3.eth.Contract(abiData, contractAddress);1
+					
+					//event
+					myContract.events.MintTokens(function(error, event) {
+						if (!error) {
+							console.log("[MintTokens event] event:", event);
+						} else {
+							console.log("[MintTokens event] event error:", error);
+						}
+					});
+					myContract.events.Transfer(function(error, event) {
+						if (!error) {
+							console.log("[Transfer event] event:", event);
+						} else {
+							console.log("[Transfer event] event error:", error);
+						}
+					});
+					/*
+					myContract.events.allEvents(function(error, event) {
+						if (!error) {
+							console.log("[All event] ", event);
+						} else {
+							console.log("[All event] error:", error);
+						}
+					});
+					*/
+				});
+			});
+			
+			var keystoreContent = null
+			var password = null;
+			
+			var signTxAndSend = function(tx, privateKey) {
+				web3.eth.accounts.signTransaction(tx, privateKey)
+									.then( signed => {
+											console.log("signed : " + signed);
+											var tran = web3.eth.sendSignedTransaction(signed.rawTransaction);
+
+											tran.on('confirmation', (confirmationNumber, receipt) => {
+													console.log('confirmation: ' + confirmationNumber);
+											});
+											
+											tran.on('transactionHash', hash => {
+												console.log('hash:', hash);
+											});
+											
+											tran.on("receipt", receipt => {
+												console.log("reciept:", receipt);
+											});
+											
+											tran.on('error', console.error);
+									});
+			}
+			
+			var allTransferEvent = [];
+			var allHolders = new Map();
+			var sortedHolderList = new Array();
+										
+			$(document).ready(function() {
+				$("#getIFOODValue").click(function() {
+					console.log("getIFOODValue");
+					myContract.methods.deployBlockNumber().call(null, function(error, result) {
+						console.log(error, result);
+					});
+                });
+			    
+				$("#getEventHistory").click(function() {
+					myContract.getPastEvents("Transfer"/*"allEvents"*/, /*"Transfer",*/
+						 {
+							fromBlock: deployBlockNumber,
+							toBlock: 'latest'
+						 },
+						 function(error, events){
+									console.log("[PastEvent] get response");
+									console.log("[PastEvent] get return : ", events);
+									allTransferEvent = events;
+								}).then(function(events){
+											//console.log(events) // same results as the optional callback above
+										});
+                });
+				
+				$("#showAllHolders").click(function() {
+					var eventCnt = allTransferEvent.length;
+					console.log("allTransferEvent count : ", eventCnt);
+					for(var i = 0 ; i < eventCnt ; i++){
+						var tmpEvent = allTransferEvent[i];
+						//console.log(tmpEvent);
+						var vFrom = tmpEvent.returnValues.from;
+						var vTo = tmpEvent.returnValues.to;
+						var vValue = new Decimal(tmpEvent.returnValues.value);
+						
+						if(allHolders.get(vFrom)) {
+							allHolders.set(vFrom, allHolders.get(vFrom).sub(vValue));
+						} else {
+							allHolders.set(vFrom, new Decimal(0).sub(vValue));
+						}
+						
+						if(allHolders.get(vTo)) {
+							allHolders.set(vTo, allHolders.get(vTo).add(vValue));
+						} else {
+							allHolders.set(vTo, new Decimal(0).add(vValue));
+						}
+					}
+					
+					console.log("0x0000000000000000000000000000000000000000", allHolders.get("0x0000000000000000000000000000000000000000"));
+					allHolders.delete("0x0000000000000000000000000000000000000000");
+					
+					for (var key of allHolders.keys()) {
+						sortedHolderList.push({"address":key, "value":allHolders.get(key)});
+					}
+					
+					console.log("start sorting...");
+					sortedHolderList.sort(function(h1, h2) {
+												return -(h1.value.comparedTo(h2.value));;
+											});
+					console.log("sorting finished...");
+					
+					var divAllHolders = $("#div-all-holders")
+					for(var i = 0 ; i < sortedHolderList.length ; i++) {
+						var tmpHolder = sortedHolderList[i];
+						
+						var newItem = $(document.createElement("div"));
+						newItem.attr("item-id", tmpHolder.address).html(tmpHolder.address + " : " + tmpHolder.value.div(Math.pow(10, 18)).toFixed());
+						divAllHolders.append(newItem);
+					}
+				});
+				
+				$("#transfer").click(function() {
+					return;
+					var account = web3.eth.accounts.decrypt(keystoreContent, password);
+					var encodeABI = myContract.methods.setY(newParamY).encodeABI();
+					var tx = {from: account.address, 
+							  to: contractAddress, 
+							  gas: 2000000, 
+							  data: encodeABI};
+					signTxAndSend(tx, account.privateKey);
+                });
+				
+			});
+		</script>
+	</body>
+</html>

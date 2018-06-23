@@ -1,0 +1,17 @@
+{
+  "project-name" : "ifood-erc20-tool",
+  "version" : "v0.0.1",
+  "target-net-list" : {
+		"mainnet" : {
+			"rpc-addrs" : [ 
+					{"rpc-http":"https://mainnet.infura.io"},
+					{"rpc-http":"https://mainnet.infura.io/mew"},
+					{"rpc-http":"https://api.myetherapi.com/eth"},
+					{"rpc-http":"https://mew.giveth.io"}
+				],
+			"contractAddress":"0x81e74a3ea4bab2277aa3b941e9d9f37b08ac5374",
+			"ABI-file":"IFOOD-ABI-mainnet.json",
+			"deployBlockNumber":5216125
+		}
+   }
+}
