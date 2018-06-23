@@ -8,13 +8,15 @@
 	</head>
 	<body>
 		<div id="div1">
-			<button type="button" id="getIFOODValue" >get IFOOD Value</button>
-			<br/>
-			<button type="button" id="getEventHistory" >get history events</button>
-			<br/>
+			<div>
+			<button type="button" id="deployBlockNumber" >ifood token deploy Block Number</button> <span id="ifoodDeployBlockNumber"></span>
+			<div>
+			<div>
 			<button type="button" id="showAllHolders" >show all holders</button>
-			<br/>
+			</div>
+			<div>
 			<button type="button" id="transfer" >transfer</button>
+			</div>
         </div>
 		<div id="div-all-holders">
 		</div>
@@ -112,72 +114,72 @@
 			var sortedHolderList = new Array();
 										
 			$(document).ready(function() {
-				$("#getIFOODValue").click(function() {
-					console.log("getIFOODValue");
+				$("#deployBlockNumber").click(function() {
+					console.log("deployBlockNumber");
 					myContract.methods.deployBlockNumber().call(null, function(error, result) {
 						console.log(error, result);
+						$("#ifoodDeployBlockNumber").text(result);
 					});
                 });
-			    
-				$("#getEventHistory").click(function() {
-					myContract.getPastEvents("Transfer"/*"allEvents"*/, /*"Transfer",*/
+				
+				$("#showAllHolders").click(function() {
+					//rebuild all holder and his token amount by Traversing all transfer event
+					myContract.getPastEvents("Transfer",/*"allEvents"*/
 						 {
 							fromBlock: deployBlockNumber,
 							toBlock: 'latest'
 						 },
-						 function(error, events){
-									console.log("[PastEvent] get response");
-									console.log("[PastEvent] get return : ", events);
+						 function(error, events) {
+									console.log("getPastEvent get response");
+									//console.log("[PastEvent] get return : ", events);
 									allTransferEvent = events;
-								}).then(function(events){
+									var eventCnt = allTransferEvent.length;
+									console.log("allTransferEvent count : ", eventCnt);
+									for(var i = 0 ; i < eventCnt ; i++) {
+										var tmpEvent = allTransferEvent[i];
+										//console.log(tmpEvent);
+										var vFrom = tmpEvent.returnValues.from;
+										var vTo = tmpEvent.returnValues.to;
+										var vValue = new Decimal(tmpEvent.returnValues.value);
+										
+										if(allHolders.get(vFrom)) {
+											allHolders.set(vFrom, allHolders.get(vFrom).sub(vValue));
+										} else {
+											allHolders.set(vFrom, new Decimal(0).sub(vValue));
+										}
+										
+										if(allHolders.get(vTo)) {
+											allHolders.set(vTo, allHolders.get(vTo).add(vValue));
+										} else {
+											allHolders.set(vTo, new Decimal(0).add(vValue));
+										}
+									}
+									
+									var zeroAddr = "0x0000000000000000000000000000000000000000";
+									console.log(zeroAddr, allHolders.get(zeroAddr).div(Math.pow(10, 18)).toFixed());
+									allHolders.delete(zeroAddr);
+									
+									for (var key of allHolders.keys()) {
+										sortedHolderList.push({"address":key, "value":allHolders.get(key)});
+									}
+									
+									console.log("start sorting...");
+									sortedHolderList.sort(function(h1, h2) {
+																return -(h1.value.comparedTo(h2.value));;
+															});
+									console.log("sorting finished...");
+									
+									var divAllHolders = $("#div-all-holders")
+									for(var i = 0 ; i < sortedHolderList.length ; i++) {
+										var tmpHolder = sortedHolderList[i];
+										
+										var newItem = $(document.createElement("div"));
+										newItem.attr("item-id", tmpHolder.address).html(tmpHolder.address + " : " + tmpHolder.value.div(Math.pow(10, 18)).toFixed());
+										divAllHolders.append(newItem);
+									}
+								}).then(function(events) {
 											//console.log(events) // same results as the optional callback above
 										});
-                });
-				
-				$("#showAllHolders").click(function() {
-					var eventCnt = allTransferEvent.length;
-					console.log("allTransferEvent count : ", eventCnt);
-					for(var i = 0 ; i < eventCnt ; i++){
-						var tmpEvent = allTransferEvent[i];
-						//console.log(tmpEvent);
-						var vFrom = tmpEvent.returnValues.from;
-						var vTo = tmpEvent.returnValues.to;
-						var vValue = new Decimal(tmpEvent.returnValues.value);
-						
-						if(allHolders.get(vFrom)) {
-							allHolders.set(vFrom, allHolders.get(vFrom).sub(vValue));
-						} else {
-							allHolders.set(vFrom, new Decimal(0).sub(vValue));
-						}
-						
-						if(allHolders.get(vTo)) {
-							allHolders.set(vTo, allHolders.get(vTo).add(vValue));
-						} else {
-							allHolders.set(vTo, new Decimal(0).add(vValue));
-						}
-					}
-					
-					console.log("0x0000000000000000000000000000000000000000", allHolders.get("0x0000000000000000000000000000000000000000"));
-					allHolders.delete("0x0000000000000000000000000000000000000000");
-					
-					for (var key of allHolders.keys()) {
-						sortedHolderList.push({"address":key, "value":allHolders.get(key)});
-					}
-					
-					console.log("start sorting...");
-					sortedHolderList.sort(function(h1, h2) {
-												return -(h1.value.comparedTo(h2.value));;
-											});
-					console.log("sorting finished...");
-					
-					var divAllHolders = $("#div-all-holders")
-					for(var i = 0 ; i < sortedHolderList.length ; i++) {
-						var tmpHolder = sortedHolderList[i];
-						
-						var newItem = $(document.createElement("div"));
-						newItem.attr("item-id", tmpHolder.address).html(tmpHolder.address + " : " + tmpHolder.value.div(Math.pow(10, 18)).toFixed());
-						divAllHolders.append(newItem);
-					}
 				});
 				
 				$("#transfer").click(function() {
@@ -190,7 +192,6 @@
 							  data: encodeABI};
 					signTxAndSend(tx, account.privateKey);
                 });
-				
 			});
 		</script>
 	</body>
