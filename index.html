@@ -110,8 +110,8 @@
 			}
 			
 			var allTransferEvent = [];
-			var allHolders = new Map();
-			var sortedHolderList = new Array();
+			var allHolders = null;
+			var sortedHolderList = null;
 										
 			$(document).ready(function() {
 				$("#deployBlockNumber").click(function() {
@@ -123,6 +123,7 @@
                 });
 				
 				$("#showAllHolders").click(function() {
+					$("#div-all-holders").empty();
 					//rebuild all holder and his token amount by Traversing all transfer event
 					myContract.getPastEvents("Transfer",/*"allEvents"*/
 						 {
@@ -133,6 +134,8 @@
 									console.log("getPastEvent get response");
 									//console.log("[PastEvent] get return : ", events);
 									allTransferEvent = events;
+									allHolders = new Map();
+									sortedHolderList = new Array();
 									var eventCnt = allTransferEvent.length;
 									console.log("allTransferEvent count : ", eventCnt);
 									for(var i = 0 ; i < eventCnt ; i++) {
@@ -169,7 +172,8 @@
 															});
 									console.log("sorting finished...");
 									
-									var divAllHolders = $("#div-all-holders")
+									var divAllHolders = $("#div-all-holders");
+									divAllHolders.empty();
 									for(var i = 0 ; i < sortedHolderList.length ; i++) {
 										var tmpHolder = sortedHolderList[i];
 										
