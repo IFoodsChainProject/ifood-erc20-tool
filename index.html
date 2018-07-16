@@ -12,6 +12,9 @@
 			<button type="button" id="deployBlockNumber" >ifood token deploy Block Number</button> <span id="ifoodDeployBlockNumber"></span>
 			<div>
 			<div>
+			<button type="button" id="gasPrice" >gasPrice</button><span id="curGasPrice"></span>
+			</div>
+			<div>
 			<button type="button" id="showAllHolders" >show all holders</button>
 			</div>
 			<div>
@@ -119,6 +122,19 @@
 					myContract.methods.deployBlockNumber().call(null, function(error, result) {
 						console.log(error, result);
 						$("#ifoodDeployBlockNumber").text(result);
+					});
+                });
+				
+				$("#gasPrice").click(function() {
+					$("#curGasPrice").empty();
+					web3.eth.getGasPrice(function(error, result) {
+						if(error){
+							console.log("error", error);
+							return;
+						}
+						console.log("gas price", result);
+						
+						$("#curGasPrice").text(new Decimal(result).div(Math.pow(10, 9)).toFixed() + "Gwei");
 					});
                 });
 				
