@@ -18,10 +18,15 @@
 			<button type="button" id="showAllHolders" >show all holders</button>
 			</div>
 			<div>
+			<button type="button" id="showQueryAddrList" >show queryAddrList and value</button>
+			</div>
+			<div>
 			<button type="button" id="transfer" >transfer</button>
 			</div>
         </div>
 		<div id="div-all-holders">
+		</div>
+		<div id="div-query-addr-list">
 		</div>
 		
 		<script>
@@ -43,6 +48,9 @@
 			var contractAddress = null;
 			var myContract = null;
 			var deployBlockNumber = 0;
+			
+			var queryAddrList = null;
+			
 			$.get("conf.json", function(configData) {
 				console.log("configData", configData);
 				var targetNet = configData["target-net-list"][paramTargetNet];
@@ -84,6 +92,11 @@
 						}
 					});
 					*/
+					
+					$.get("queryAddrList.json", function(queryAddrListData) {
+						queryAddrList = queryAddrListData;
+						console.log("queryAddrList length", queryAddrList.length);
+					});
 				});
 			});
 			
@@ -115,6 +128,32 @@
 			var allTransferEvent = [];
 			var allHolders = null;
 			var sortedHolderList = null;
+			
+			var queryCnt = 0;
+			var getIFoodBalance = function(addr) {
+				myContract.methods.balanceOf(addr).call(null, function(error, result) {
+						if(error) {
+							console.log(error);
+							return;
+						}
+						queryCnt = queryCnt + 1;
+						console.log(queryCnt, addr, "value is ", result);
+					
+						var newItem = $(document.createElement("div"));
+						newItem.attr("item-id", addr).html("["+queryCnt+"]" + addr + " : " + new Decimal(result).div(Math.pow(10, 18)).toFixed());
+						$("#div-query-addr-list").append(newItem);
+						
+						queryAddrList = queryAddrList.slice(1);
+						
+						if(queryAddrList.length <= 0) {
+							var endItem = $(document.createElement("div"));
+							endItem.html("----end----");
+							$("#div-query-addr-list").append(endItem);
+						} else {
+							getIFoodBalance(queryAddrList[0]);
+						}
+					});
+			}
 										
 			$(document).ready(function() {
 				$("#deployBlockNumber").click(function() {
@@ -136,6 +175,22 @@
 						
 						$("#curGasPrice").text(new Decimal(result).div(Math.pow(10, 9)).toFixed() + "Gwei");
 					});
+                });
+				
+				$("#showQueryAddrList").click(function() {
+					console.log("showQueryAddrList");
+					var queryAddrListCnt = queryAddrList.length;
+					if(queryAddrListCnt <= 0 ) {
+						Alert("queryAddrList is empty");
+						return;
+					}
+					
+					$("#div-query-addr-list").empty();
+					var startItem = $(document.createElement("div"));
+					startItem.html("----start--" + queryAddrListCnt + " total----");
+					$("#div-query-addr-list").append(startItem);
+					
+					getIFoodBalance(queryAddrList[0]);
                 });
 				
 				$("#showAllHolders").click(function() {
