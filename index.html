@@ -183,17 +183,15 @@
 
 			    var curHighestBlockNumber = 0;
                 $("#getETHTransferHistory").click(function() {
-
-                    web3.eth.getBlockNumber(function(err, res) {
-                        if(err) {
-                            console.log("getBlockNumber error", err);
-                            return;
-						}
-                        curHighestBlockNumber = res;
-                        console.log("current block height:",curHighestBlockNumber);
-                        doGetBlock(0, curHighestBlockNumber);
-					});
-
+                    web3.eth.getBlockNumber()
+						.then(function(res) {
+							curHighestBlockNumber = res;
+							console.log("current block height:", curHighestBlockNumber);
+							doGetBlock(0, curHighestBlockNumber);
+                    	})
+						.catch(function(err) {
+                        	console.error(err);
+	                    });
 				});
 
 
