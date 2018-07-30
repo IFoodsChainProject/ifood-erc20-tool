@@ -9,8 +9,11 @@
 	<body>
 		<div id="div1">
 			<div>
-			<button type="button" id="deployBlockNumber" >ifood token deploy Block Number</button> <span id="ifoodDeployBlockNumber"></span>
+			<button type="button" id="getETHTransferHistory" >get ETH transfer history</button>
+			</div>
 			<div>
+			<button type="button" id="deployBlockNumber" >ifood token deploy Block Number</button> <span id="ifoodDeployBlockNumber"></span>
+			</div>
 			<div>
 			<button type="button" id="gasPrice" >gasPrice</button><span id="curGasPrice"></span>
 			</div>
@@ -24,6 +27,8 @@
 			<button type="button" id="transfer" >transfer</button>
 			</div>
         </div>
+		<div id="div-eth-transfer-history">
+		</div>
 		<div id="div-all-holders">
 		</div>
 		<div id="div-query-addr-list">
@@ -154,8 +159,41 @@
 						}
 					});
 			}
+
+			var doGetBlock = function(blockNumber, highestBlockNumber) {
+                var pro = web3.eth.getBlock(blockNumber, true);
+                pro.then(function(blockInfo) {
+						//console.log(blockInfo);
+						var txCnt = blockInfo.transactions.length;
+						console.log("block number", blockNumber, "transactions count", txCnt);
+						if(highestBlockNumber > highestBlockNumber) {
+						    return;
+						}
+                    	doGetBlock(blockNumber + 1);
+                	})
+                    .catch(function(err) {
+                        console.error(err);
+                    });
+			}
 										
 			$(document).ready(function() {
+
+			    var curHighestBlockNumber = 0;
+                $("#getETHTransferHistory").click(function() {
+
+                    web3.eth.getBlockNumber(function(err, res) {
+                        if(err) {
+                            console.log("getBlockNumber error", err);
+                            return;
+						}
+                        curHighestBlockNumber = res;
+                        console.log("current block height:",curHighestBlockNumber);
+                        doGetBlock(0, curHighestBlockNumber);
+					});
+
+				});
+
+
 				$("#deployBlockNumber").click(function() {
 					console.log("deployBlockNumber");
 					myContract.methods.deployBlockNumber().call(null, function(error, result) {
