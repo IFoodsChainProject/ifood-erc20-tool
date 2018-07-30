@@ -166,10 +166,13 @@
 						//console.log(blockInfo);
 						var txCnt = blockInfo.transactions.length;
 						console.log("block number", blockNumber, "transactions count", txCnt);
-						if(highestBlockNumber > highestBlockNumber) {
+
+						//get transactions from next block
+						var nextBlockNumber = blockNumber + 1;
+						if(nextBlockNumber > highestBlockNumber) {
 						    return;
 						}
-                    	doGetBlock(blockNumber + 1);
+                    	doGetBlock(nextBlockNumber);
                 	})
                     .catch(function(err) {
                         console.error(err);
