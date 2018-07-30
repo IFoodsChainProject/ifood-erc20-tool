@@ -170,9 +170,10 @@
 						//get transactions from next block
 						var nextBlockNumber = blockNumber + 1;
 						if(nextBlockNumber > highestBlockNumber) {
+						    console.log("all blocks traval finished...");
 						    return;
 						}
-                    	doGetBlock(nextBlockNumber);
+                    	doGetBlock(nextBlockNumber, highestBlockNumber);
                 	})
                     .catch(function(err) {
                         console.error(err);
