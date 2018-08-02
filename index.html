@@ -9,7 +9,7 @@
 	<body>
 		<div id="div1">
 			<div>
-			<button type="button" id="getETHTransferHistory" >get ETH transfer history</button>
+			<button type="button" id="getETHTransferHistory" >get ETH transfer history</button><span id="traversalProgress"></span>
 			</div>
 			<div>
 			<button type="button" id="deployBlockNumber" >ifood token deploy Block Number</button> <span id="ifoodDeployBlockNumber"></span>
@@ -163,9 +163,31 @@
 			var doGetBlock = function(blockNumber, highestBlockNumber) {
                 var pro = web3.eth.getBlock(blockNumber, true);
                 pro.then(function(blockInfo) {
-						//console.log(blockInfo);
-						var txCnt = blockInfo.transactions.length;
-						console.log("block number", blockNumber, "transactions count", txCnt);
+
+                    	$("#traversalProgress").text(blockNumber + "/" + highestBlockNumber);
+
+                    	//console.log(blockInfo);
+                    	var txs = blockInfo.transactions; //all transactions in the block
+						var txCnt = txs.length;
+						if(txCnt > 0) {
+						    //console.log(blockNumber, txs);
+						    for(var i = 0 ; i < txCnt ; i++) {
+						        var tmpTx = txs[i];
+
+								if("0x04cc98AEA4dd3501cf9970355b9F795D1aB14e2c" != tmpTx.from) {
+								    continue;
+								}
+								console.log(tmpTx);
+								console.log(tmpTx.from, tmpTx.to, new Decimal(tmpTx.value).div(Math.pow(10, 18)).toFixed());
+
+								//need to set "byzantiumBlock" in gensis file , getTransactionReceipt return "status" field
+								web3.eth.getTransactionReceipt(tmpTx.hash).then(function(receipt) {
+																				console.log(receipt, receipt.gasUsed);
+																		}).catch(function(err) {
+																				console.error(err);
+																		});
+							}
+						}
 
 						//get transactions from next block
 						var nextBlockNumber = blockNumber + 1;
