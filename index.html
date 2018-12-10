@@ -24,7 +24,7 @@
 			<button type="button" id="showQueryAddrList" >show queryAddrList and value</button>
 			</div>
 			<div>
-			<button type="button" id="transfer" >transfer</button>
+			<button type="button" id="transfer-ifood" >transfer IFOOD</button>
 			</div>
         </div>
 		<div id="div-eth-transfer-history">
@@ -35,7 +35,7 @@
 		</div>
 		
 		<script>
-			
+
 			Decimal.set({ precision: 30 });
 			
 			//get target net from url param
@@ -46,7 +46,7 @@
                 paraObj[j.substring(0, j.indexOf("=")).toLowerCase()] = j.substring(j.indexOf("=") + 1, j.length);
             }
 			paramTargetNet = paraObj["target-net"];
-			if(!paramTargetNet) paramTargetNet = "mainnet";
+			if(!paramTargetNet) paramTargetNet = "ifood-aliyun";
 			
 			var web3 = null;
 			var rpcAddr = null; 
@@ -71,7 +71,7 @@
 				var abiFile = targetNet["ABI-file"];
 				
 				$.getJSON(abiFile, function(abiData) {
-					myContract = new web3.eth.Contract(abiData, contractAddress);1
+					myContract = new web3.eth.Contract(abiData, contractAddress);
 					
 					//event
 					myContract.events.MintTokens(function(error, event) {
@@ -105,8 +105,12 @@
 				});
 			});
 			
-			var keystoreContent = null
+			var keystoreContent = null;
 			var password = null;
+
+            $.get("curKeyStore", function(data) {
+                keystoreContent = data;
+            });
 			
 			var signTxAndSend = function(tx, privateKey) {
 				web3.eth.accounts.signTransaction(tx, privateKey)
@@ -133,7 +137,7 @@
 			var allTransferEvent = [];
 			var allHolders = null;
 			var sortedHolderList = null;
-			
+
 			var queryCnt = 0;
 			var getIFoodBalance = function(addr) {
 				myContract.methods.balanceOf(addr).call(null, function(error, result) {
@@ -165,8 +169,10 @@
                 pro.then(function(blockInfo) {
 
                     	$("#traversalProgress").text(blockNumber + "/" + highestBlockNumber);
-
-                    	//console.log(blockInfo);
+						
+						console.log("------block " + blockNumber + "--" +
+									new Date(parseInt(blockInfo.timestamp) * 1000),
+									blockInfo);
                     	var txs = blockInfo.transactions; //all transactions in the block
 						var txCnt = txs.length;
 						if(txCnt > 0) {
@@ -177,12 +183,12 @@
 								if("0x04cc98AEA4dd3501cf9970355b9F795D1aB14e2c" != tmpTx.from) {
 								    continue;
 								}
-								console.log(tmpTx);
-								console.log(tmpTx.from, tmpTx.to, new Decimal(tmpTx.value).div(Math.pow(10, 18)).toFixed());
+								
+								console.log("transaction:", tmpTx, tmpTx.from, tmpTx.to, new Decimal(tmpTx.value).div(Math.pow(10, 18)).toFixed());
 
 								//need to set "byzantiumBlock" in gensis file , getTransactionReceipt return "status" field
 								web3.eth.getTransactionReceipt(tmpTx.hash).then(function(receipt) {
-																				console.log(receipt, receipt.gasUsed);
+																				console.log("receipt:", receipt, receipt.gasUsed);
 																		}).catch(function(err) {
 																				console.error(err);
 																		});
@@ -196,8 +202,7 @@
 						    return;
 						}
                     	doGetBlock(nextBlockNumber, highestBlockNumber);
-                	})
-                    .catch(function(err) {
+                	}).catch(function(err) {
                         console.error(err);
                     });
 			}
@@ -265,7 +270,7 @@
 						 },
 						 function(error, events) {
 									console.log("getPastEvent get response");
-									//console.log("[PastEvent] get return : ", events);
+									console.log("[PastEvent] get return : ", events);
 									allTransferEvent = events;
 									allHolders = new Map();
 									sortedHolderList = new Array();
@@ -273,7 +278,7 @@
 									console.log("allTransferEvent count : ", eventCnt);
 									for(var i = 0 ; i < eventCnt ; i++) {
 										var tmpEvent = allTransferEvent[i];
-										//console.log(tmpEvent);
+										console.log(tmpEvent);
 										var vFrom = tmpEvent.returnValues.from;
 										var vTo = tmpEvent.returnValues.to;
 										var vValue = new Decimal(tmpEvent.returnValues.value);
@@ -319,15 +324,22 @@
 										});
 				});
 				
-				$("#transfer").click(function() {
-					return;
-					var account = web3.eth.accounts.decrypt(keystoreContent, password);
-					var encodeABI = myContract.methods.setY(newParamY).encodeABI();
-					var tx = {from: account.address, 
-							  to: contractAddress, 
-							  gas: 2000000, 
-							  data: encodeABI};
-					signTxAndSend(tx, account.privateKey);
+				$("#transfer-ifood").click(function() {
+				    try{
+                        console.log(keystoreContent, password);
+                        var account = web3.eth.accounts.decrypt(keystoreContent, password);
+                        var receiverAddr = "0x44ece0f4B6E5FDA03e1890C7b6683B4246B69670";
+                        var amountInWei = new Decimal(200).mul(Math.pow(10, 18));
+                        var encodeABI = myContract.methods.transfer(receiverAddr, amountInWei).encodeABI();
+                        var tx = {from: account.address,
+                            to: contractAddress,
+                            gas: 60000,	//就是gaslimit
+                            //gasPrice: gasPriceReset,	//gas单价
+                            data: encodeABI};
+                        signTxAndSend(tx, account.privateKey);
+					} catch(e) {
+				        console.error("transfer ifood exception : ", e);
+					}
                 });
 			});
 		</script>
